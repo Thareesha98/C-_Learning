@@ -1,0 +1,8 @@
+C:\Users\thare\source\repos\Learning\Learning\bin\Debug\Learning.exe.config
+C:\Users\thare\source\repos\Learning\Learning\bin\Debug\Learning.exe
+C:\Users\thare\source\repos\Learning\Learning\bin\Debug\Learning.pdb
+C:\Users\thare\source\repos\Learning\Learning\obj\Debug\Learning.csproj.AssemblyReference.cache
+C:\Users\thare\source\repos\Learning\Learning\obj\Debug\Learning.csproj.CoreCompileInputs.cache
+C:\Users\thare\source\repos\Learning\Learning\obj\Debug\Learning.exe
+C:\Users\thare\source\repos\Learning\Learning\obj\Debug\Learning.pdb
+C:\Users\thare\source\repos\Learning\Learning\obj\Debug\Learning.exe.config
