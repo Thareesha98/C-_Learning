@@ -1,41 +1,82 @@
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHttpLogging();
+//builder.Services.AddControllers();
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddScoped<IMyService, MyService>();
 
+
+//builder.Services.AddHttpLogging((logging) => { });
+//app.Use(async (context, next) =>
+//{
+//    Console.WriteLine("Middleware 1: Before next middleware");
+//    await next.Invoke(); // Call the next middleware in the pipeline
+//    Console.WriteLine("Middleware 1: After next middleware");
+//});
+
+
+//if(app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//   // app.UseSession
+//}
 var app = builder.Build();
+//app.UseHttpLogging();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+//app.UseHttpsRedirection();
+//app.UseAuthorization();
+
+app.Use(async (context, next) =>
 {
-    app.MapOpenApi();
-}
+    var myService = context.RequestServices.GetRequiredService<IMyService>();
+    myService.LogCreation("First MiddleWare");
+    await next.Invoke();
+});
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.Use(async (context, next) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var myService = context.RequestServices.GetRequiredService<IMyService>();
+    myService.LogCreation("Second MiddleWare");
+    await next.Invoke();
+});
 
-app.MapGet("/weatherforecast", () =>
+app.MapGet("/", (IMyService myService) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    myService.LogCreation("Hello, World!");
+    return Results.Ok("Check the console for service creation logs");
+});
+
+//app.MapControllers();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+
+
+
+
+
+
+
+
+
+public interface IMyService
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    void LogCreation(string message);
 }
+
+public class MyService : IMyService
+{
+    private readonly int _serviceId;
+    public MyService()
+    {
+        _serviceId = new Random().Next(100000, 999999);
+    }
+
+    public void LogCreation(string message)
+    {
+        Console.WriteLine($"Service {_serviceId} created with message: {message}");
+    }
+}
+
+
+
+
