@@ -1,67 +1,111 @@
-using System.Text.Json;
-using System.Xml.Serialization;
-using System.IO;
+using Microsoft.AspNetCore.OpenApi;
+using Swashbuckle.AspNetCore;
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
 var app = builder.Build();
 
-var samplePerson = new Person { UserName = "Thareesha98", UserAge = 30 };
 
-app.MapGet("/", () => "Hello World!   I am the Root");
-
-app.MapGet("/manual-json", () =>
+var blogs = new List<Blog>
 {
-    var jsonString = JsonSerializer.Serialize(samplePerson);
-    return TypedResults.Text(jsonString, "application/json");
+    new Blog { Title = "First Blog", Body = "This is the content of the first blog." },
+    new Blog { Title = "Second Blog", Body = "This is the content of the second blog." }
+};
+
+if(app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.Use(async (context, next) =>
+{
+    Console.WriteLine(context.Request.Path);
+    await next.Invoke();
+    Console.WriteLine(context.Response.StatusCode);
+
 });
 
-app.MapGet("/custom-serializer", () =>
-{
-    var options = new JsonSerializerOptions
+
+app.UseWhen(
+    context => context.Request.Method != "GET",
+    appBuilder => appBuilder.Use(async (context, next) =>
     {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-    var customJsonString = JsonSerializer.Serialize(samplePerson, options);
-    return TypedResults.Text(customJsonString, "application/json");
-});
+        var extractedPassword = context.Request.Headers["X-Api-Key"];
+        if (extractedPassword != "12345")
+        {
+            context.Response.StatusCode = 401; // Unauthorized
+            await context.Response.WriteAsync("Unauthorized access. Invalid Password-key.");
+        }
+        else
+        {
+            context.Response.StatusCode = 200;
+            await next.Invoke();
+        }
+    }
+    )
+);
 
-app.MapGet("/json", () => {
-    return TypedResults.Json(samplePerson);
-});
 
-app.MapGet("/auto", () =>
+app.MapGet("/", () => "Welcome to the Blog API!");
+
+app.MapGet("/blogs", () => Results.Ok(blogs));
+
+app.MapGet("/blogs/{id}", (int id) => 
 {
-    return samplePerson;
-});
-
-app.MapGet("/xml", () =>
+    if (id < 0 || id >= blogs.Count)
+    {
+        return Results.NotFound();
+    }
+    return Results.Ok(blogs[id]);
+}).WithOpenApi(operation =>
 {
-    var xmlSerializer = new XmlSerializer(typeof(Person));
-    var stringWriter = new StringWriter();
-    xmlSerializer.Serialize(stringWriter, samplePerson);
-    var xmlOutput = stringWriter.ToString();
-    return TypedResults.Text(xmlOutput, "application/xml");
+    operation.Parameters[0].Description = "The ID of the blog to retrieve";
+    operation.Summary = "Get a specific blog by ID";
+    operation.Description = "Returns a single blog";
+    return operation;
 });
 
-app.MapPost("/submit", async (HttpContext context) =>
+app.MapPost("/blogs", (Blog blog) => 
 {
-    using var reader = new StreamReader(context.Request.Body);
-    var body = await reader.ReadToEndAsync();
-
-    var person = JsonSerializer.Deserialize<Person>(body);
-
-    if (person == null)
-        return Results.BadRequest("Invalid JSON data.");
-
-    return Results.Ok($"[Manual] Username = {person.UserName}, Age = {person.UserAge}");
-
+    blogs.Add(blog);
+    return Results.Created($"/blogs/{blogs.Count - 1}", blog);
 });
+
+app.MapPut("/blogs/{id}", (int id, Blog blog) => 
+{
+    if (id < 0 || id >= blogs.Count)
+    {
+        return Results.NotFound();
+    }
+    blogs[id] = blog;
+    return Results.Ok(blog);
+});
+
+app.MapDelete("/blogs/{id}", (int id) => 
+{
+    if (id < 0 || id >= blogs.Count)
+    {
+        return Results.NotFound();
+    }
+    blogs.RemoveAt(id);
+    return Results.NoContent();
+});
+
 
 app.Run();
 
-public class Person
+
+
+
+
+public class Blog
 {
-    public required string UserName { get; set; }
-    public required int UserAge { get; set; }
+    public required string Title { get; set; }
+    public required string Body { get; set; }
 }
